@@ -252,6 +252,11 @@ const classComponentUpdater = {
   },
 };
 
+/**
+ * 整个React中判断 Component类 是否需要更新，只有两个地方
+ * 一 是看有没有 shouldComponentUpdate 方法
+ * 二 就是 ReactFiberClassComponent.js 中的 checkShouldComponentUpdate() 中对PureComponent的判断
+ */
 function checkShouldComponentUpdate(
   workInProgress,
   ctor,
@@ -283,6 +288,7 @@ function checkShouldComponentUpdate(
     return shouldUpdate;
   }
 
+  // pureComponentPrototype.isPureReactComponent = true
   if (ctor.prototype && ctor.prototype.isPureReactComponent) {
     return (
       !shallowEqual(oldProps, newProps) || !shallowEqual(oldState, newState)

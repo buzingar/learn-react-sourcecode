@@ -310,6 +310,11 @@ export function jsxDEV(type, config, maybeKey, source, self) {
 
 /**
  * Create and return a new ReactElement of the given type.
+ * 在React中将jsx变成普通的js之后它就是一个带有许多参数的函数调用 React.createElement()
+ * 它的第一个参数是一个字符串，对应html中的标签名，
+ * 第二个参数是它的所有属性所构成的对象，当然，它也有可能是个空对象，
+ * 剩下的参数都是这个元素下的子元素
+ *
  * See https://reactjs.org/docs/react-api.html#createelement
  */
 export function createElement(type, config, children) {

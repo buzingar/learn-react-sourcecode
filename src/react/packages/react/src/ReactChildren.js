@@ -183,7 +183,10 @@ function traverseAllChildrenImpl(
   const nextNamePrefix =
     nameSoFar === '' ? SEPARATOR : nameSoFar + SUBSEPARATOR;
 
+  // 这部分的代码首先会判断 children 是否为数组。
   if (Array.isArray(children)) {
+    // 如果为数组的话，就遍历数组并把其中的每个元素都递归调用 traverseAllChildrenImpl，
+    // 也就是说必须是单个可渲染节点才可以执行上面代码中的 callback。
     for (let i = 0; i < children.length; i++) {
       child = children[i];
       // 不手动设置key的话 第一层第一个是.0，第二个是.1
@@ -196,6 +199,8 @@ function traverseAllChildrenImpl(
       );
     }
   } else {
+    // 如果不是数组的话，就看看 children 是否可以支持迭代，原理就是通过 obj[Symbol.iterator] 的方式去取迭代器，
+    // 返回值如果是个函数的话就代表支持迭代，然后逻辑就和之前的一样了。
     const iteratorFn = getIteratorFn(children);
     if (typeof iteratorFn === 'function') {
       if (__DEV__) {
@@ -343,14 +348,18 @@ function forEachChildren(children, forEachFunc, forEachContext) {
 // child: <span>1</span>
 // childKey: .0
 function mapSingleChildIntoContext(bookKeeping, child, childKey) {
+  // bookKeeping 就是我们从对象池子里取出来的东西，即 traverseContext
   const {result, keyPrefix, func, context} = bookKeeping;
-  // func: (item)=>{return [item,[item,] ]},
+  // 调用 func 并且传入节点（此时这个节点肯定是单个节点）
+  // func: (item)=>{return [item,[item,] ]}, func 代表着 React.mapChildren 中的第二个参数
   // item即 <span>1</span>
   // 第二个参数 bookKeeping.count++ 很有意思，压根儿没用到，但仍起到计数的作用
   let mappedChild = func.call(context, child, bookKeeping.count++);
-  // 如果根据React.Children.map()第二个参数callback，执行仍是一个数组的话，
-  // 递归调用mapIntoWithKeyPrefixInternal，继续之前的步骤，
-  // 直到是单个ReactElement
+
+  // 接下来就是判断返回值类型的过程：
+  // 如果是数组的话，还是回归之前的代码逻辑，注意这里传入的 func 是 c => c，因为要保证最终结果是被摊平的；
+  // 也就是说，如果根据React.Children.map()第二个参数callback，执行仍是一个数组的话，
+  // 递归调用mapIntoWithKeyPrefixInternal，继续之前的步骤，直到是单个ReactElement
   if (Array.isArray(mappedChild)) {
     // mappedChild: [item,[item,]]
     // result: []
@@ -358,6 +367,11 @@ function mapSingleChildIntoContext(bookKeeping, child, childKey) {
     // func: c => c
     mapIntoWithKeyPrefixInternal(mappedChild, result, childKey, c => c);
   } else if (mappedChild != null) {
+    /*
+     如果不是数组的话，判断返回值是否是一个有效的 Element，
+     验证通过的话就 clone 一份并且替换掉 key，
+     最后把返回值放入 result 中，result 其实也就是 mapChildren 的返回值。
+    */
     // 当mappedChild是单个ReactElement并且不为null时
     if (isValidElement(mappedChild)) {
       // 赋给新对象除key外同样的属性，替换key属性
@@ -495,6 +509,17 @@ function onlyChild(children) {
 }
 
 // as就是重命名了，map即mapChildren
+// children是一个不透明的数据结构，从本质上来讲， props.children 可以是任何的类型，比如数组、函数、对象等等。
+// React提供了一系列的函数助手来使得操作children更加方便。
+// 两个最显眼的函数助手就是 React.Children.map 以及 React.Children.forEach 。
+// 它们在对应数组的情况下能起作用，除此之外，当函数、对象或者任何东西作为children传递时，它们也会起作用。
+
+// 因为this.props.children 可以是任何类型的，检查一个组件有多少个children是非常困难的。
+// 天真的使用 this.props.children.length ，当传递了字符串或者函数时程序便会中断。
+// 假设我们有个child："Hello World!" ，但是使用 .length 的方法将会显示为12。
+// 这就是为什么我们有 React.Children.count 方法的原因，无论是什么类型它都会返回children的数量
+
+// toArray: 你能将children转换为数组通过 React.Children.toArray 方法。如果你需要对它们进行排序，这个方法是非常有用的。
 export {
   forEachChildren as forEach,
   mapChildren as map, // 将children根据传入function由嵌套多维关系平铺展开成一维
@@ -502,3 +527,5 @@ export {
   onlyChild as only,
   toArray,
 };
+
+// ! [对React children 的深入理解](https://segmentfault.com/a/1190000011527160?utm_source=sf-related)

@@ -59,6 +59,7 @@ Component.prototype.isReactComponent = {};
  * @final
  * @protected
  */
+// setState()是 Component 原型上的方法，其本质是调用 ReactNoopUpdateQueue.js 中的enqueueSetState()方法
 Component.prototype.setState = function(partialState, callback) {
   invariant(
     typeof partialState === 'object' ||
@@ -126,6 +127,7 @@ if (__DEV__) {
   }
 }
 
+// 新建了空方法ComponentDummy，并继承Component的原型
 function ComponentDummy() {}
 ComponentDummy.prototype = Component.prototype;
 
@@ -142,11 +144,40 @@ function PureComponent(props, context, updater) {
   this.updater = updater || ReactNoopUpdateQueue;
 }
 
+/*
+如果让 PureComponent.prototype 直接等于Component的实例对象的话（继承原型），会多继承Component的constructor，
+但是PureComponent已经有自己的constructor了，这样就会多消耗一些内存。
+所以会新建ComponentDummy，只继承Component的原型，不包括constructor，以此来节省内存。
+*/
+
+// 将Component的方法拷贝到pureComponentPrototype上
+// 用ComponentDummy的原因是为了不直接实例化一个Component实例，可以减少一些内存使用
+// PureComponent.prototype等于ComponentDummy的实例
 const pureComponentPrototype = (PureComponent.prototype = new ComponentDummy());
+// PureComponent.prototype.constructor = PureComponent
+// 原型的constructor等于自身，覆盖掉Component.prototype的constructor（Component）
 pureComponentPrototype.constructor = PureComponent;
+
+// 以上两步即是让PureComponent继承Component
+
 // Avoid an extra prototype jump for these methods.
+// PureComponent的prototype浅拷贝Component的prototype的所有属性
+// pureComponentPrototype.__proto__=== ComponentDummy.prototype //true
+// 也就是
+// PureComponent.prototype.__proto__=== Component.prototype //true
+// 这样就多了一层隐式原型的查找，为了减少一次原型链查找
+// 这样的话，Component.prototype中的方法在 PureComponent.prototype 中都有，无需再从__proto__上查找了。
+// 避免多一次原型链查找，因为上面两句已经让PureComponent继承了Component
+// 下面多写了一句Object.assign()，是为了避免多一次原型链查找
+
+// Object.assign是浅拷贝，
+// 将Component.prototype上的方法都复制到PureComponent.prototype上
+// 也就是pureComponent的原型上
+// 详细请参考：https://developer.mozilla.org/zh-CN/docs/Web/JavaScript/Reference/Global_Objects/Object/assign
 Object.assign(pureComponentPrototype, Component.prototype);
+// 唯一的区别就是在原型上添加了isPureReactComponent属性去表示该Component是PureComponent
 pureComponentPrototype.isPureReactComponent = true;
 
 // 两个基本组件，分别为 Component 及 PureComponent
+// PureComponent与Component唯一的区别：PureComponent是自带了一个简单的shouldComponentUpdate来优化更新机制的。
 export {Component, PureComponent};

@@ -45,19 +45,34 @@ function escape(key) {
 
 let didWarnAboutMaps = false;
 
+// 在/后再加一个/   'aa/a/' -> 'aa//a//'
+// react对key定义的一个规则：如果字符串中有连续多个/的话，在匹配的字串后再加/
+// 这个函数一般是第二层递归时，会用到
 const userProvidedKeyEscapeRegex = /\/+/g;
 function escapeUserProvidedKey(text) {
+  // 如果字符串中有连续多个 / 的话，在匹配的字串后再加 /
   return ('' + text).replace(userProvidedKeyEscapeRegex, '$&/');
 }
 
+// 对象池的最大容量为10
 const POOL_SIZE = 10;
+// 对象池
 const traverseContextPool = [];
+/*
+* 在每次map()的过程中，每次递归都会用到 traverseContext 对象，
+* 创建traverseContextPool对象池的目的，就是复用里面的对象，
+* 以减少内存消耗，并且在map()结束时，
+* 将复用的对象初始化，并push进对象池中（releaseTraverseContext），以供下次map()时使用
+*/
+// 创建一个对象池，复用Object，从而减少很多对象创建带来的内存占用和gc（垃圾回收）的损耗
+// ([],'',(item)=>{return [item,[item,] ]},undefined)
 function getPooledTraverseContext(
   mapResult,
   keyPrefix,
   mapFunction,
   mapContext,
 ) {
+  // 如果对象池内存在对象，则出队一个对象，并将arguments的值赋给对象属性，最后返回该对象
   if (traverseContextPool.length) {
     const traverseContext = traverseContextPool.pop();
     traverseContext.result = mapResult;
@@ -67,6 +82,14 @@ function getPooledTraverseContext(
     traverseContext.count = 0;
     return traverseContext;
   } else {
+    // 如果不存在，则返回一个新对象
+    // {
+    //   result:[],
+    //   keyPrefix:'',
+    //   func:(item)=>{return [item,[item,] ]},
+    //   context:undefined,
+    //   count:0,
+    // }
     return {
       result: mapResult,
       keyPrefix: keyPrefix,
@@ -77,6 +100,7 @@ function getPooledTraverseContext(
   }
 }
 
+// 将复用的对象初始化，并push进对象池中（releaseTraverseContext），以供下次map()时使用
 function releaseTraverseContext(traverseContext) {
   traverseContext.result = null;
   traverseContext.keyPrefix = null;
@@ -89,6 +113,12 @@ function releaseTraverseContext(traverseContext) {
 }
 
 /**
+ * 核心递归函数，目的是展平嵌套数组
+ 分为两部分：
+（1）children是Object，并且$$typeof是REACT_ELEMENT_TYPE/REACT_PORTAL_TYPE调用callback 即mapSingleChildIntoContext ，
+    复制除key外的属性，替换key属性，将其放入到result中
+（2）children是Array，循环children，再用traverseAllChildrenImpl 执行child
+ *
  * @param {?*} children Children tree container.
  * @param {!string} nameSoFar Name of the key path so far.
  * @param {!function} callback Callback to invoke with each child found.
@@ -109,6 +139,7 @@ function traverseAllChildrenImpl(
     children = null;
   }
 
+  // 调用func的flag
   let invokeCallback = false;
 
   if (children === null) {
@@ -121,6 +152,9 @@ function traverseAllChildrenImpl(
         break;
       case 'object':
         switch (children.$$typeof) {
+          // 如果props.children是单个ReactElement/PortalElement的话
+          // 递归traverseAllChildrenImpl时，<span>1</span>和<span>2</span>作为child
+          // 必会触发invokeCallback=true
           case REACT_ELEMENT_TYPE:
           case REACT_PORTAL_TYPE:
             invokeCallback = true;
@@ -134,6 +168,9 @@ function traverseAllChildrenImpl(
       children,
       // If it's the only child, treat the name as if it was wrapped in an array
       // so that it's consistent if the number of children grows.
+      // 如果只有一个子节点，也将它放在数组中来处理
+      // .$=0
+      // <span>1</span> key='.0'
       nameSoFar === '' ? SEPARATOR + getComponentKey(children, 0) : nameSoFar,
     );
     return 1;
@@ -141,13 +178,15 @@ function traverseAllChildrenImpl(
 
   let child;
   let nextName;
-  let subtreeCount = 0; // Count of children found in the current subtree.
+  let subtreeCount = 0; // Count of children found in the current subtree. // 有多少个子节点
+  // .
   const nextNamePrefix =
     nameSoFar === '' ? SEPARATOR : nameSoFar + SUBSEPARATOR;
 
   if (Array.isArray(children)) {
     for (let i = 0; i < children.length; i++) {
       child = children[i];
+      // 不手动设置key的话 第一层第一个是.0，第二个是.1
       nextName = nextNamePrefix + getComponentKey(child, i);
       subtreeCount += traverseAllChildrenImpl(
         child,
@@ -186,6 +225,7 @@ function traverseAllChildrenImpl(
         );
       }
     } else if (type === 'object') {
+      // 如果是一个纯对象的话，throw error
       let addendum = '';
       if (__DEV__) {
         addendum =
@@ -209,6 +249,7 @@ function traverseAllChildrenImpl(
 }
 
 /**
+ * 调用实现
  * Traverses children that are typically specified as `props.children`, but
  * might also be specified through attributes:
  *
@@ -285,18 +326,46 @@ function forEachChildren(children, forEachFunc, forEachContext) {
   releaseTraverseContext(traverseContext);
 }
 
+/**
+ * 递归仍是数组的child；将单个ReactElement的child加入result中。
+ * 让child调用 func 方法，所得的结果如果是数组的话继续递归；如果是单个ReactElement的话，将其放入result数组中
+ *
+ * traverseAllChildren的第二个参数
+ */
+// bookKeeping:traverseContext=
+// {
+//  result:[],
+//  keyPrefix:'',
+//  func:(item)=>{return [item,[item,] ]},
+//  context:undefined,
+//  count:0,
+// }
+// child: <span>1</span>
+// childKey: .0
 function mapSingleChildIntoContext(bookKeeping, child, childKey) {
   const {result, keyPrefix, func, context} = bookKeeping;
-
+  // func: (item)=>{return [item,[item,] ]},
+  // item即 <span>1</span>
+  // 第二个参数 bookKeeping.count++ 很有意思，压根儿没用到，但仍起到计数的作用
   let mappedChild = func.call(context, child, bookKeeping.count++);
+  // 如果根据React.Children.map()第二个参数callback，执行仍是一个数组的话，
+  // 递归调用mapIntoWithKeyPrefixInternal，继续之前的步骤，
+  // 直到是单个ReactElement
   if (Array.isArray(mappedChild)) {
+    // mappedChild: [item,[item,]]
+    // result: []
+    // childKey: .0
+    // func: c => c
     mapIntoWithKeyPrefixInternal(mappedChild, result, childKey, c => c);
   } else if (mappedChild != null) {
+    // 当mappedChild是单个ReactElement并且不为null时
     if (isValidElement(mappedChild)) {
+      // 赋给新对象除key外同样的属性，替换key属性
       mappedChild = cloneAndReplaceKey(
         mappedChild,
         // Keep both the (mapped) and old keys if they differ, just as
         // traverseAllChildren used to do for objects as children
+        // 如果新老keys是不一样的话，两者都保留，像traverseAllChildren对待objects做的那样
         keyPrefix +
           (mappedChild.key && (!child || child.key !== mappedChild.key)
             ? escapeUserProvidedKey(mappedChild.key) + '/'
@@ -308,24 +377,41 @@ function mapSingleChildIntoContext(bookKeeping, child, childKey) {
   }
 }
 
+/**
+ * getPooledTraverseContext()/traverseAllChildren()/releaseTraverseContext()的包裹器
+ */
 function mapIntoWithKeyPrefixInternal(children, array, prefix, func, context) {
-  console.log('children:',children);
-  console.log('result:[]-',array);
-  console.log('prefix:null-',prefix);
-  console.log('func:',func);
-  console.log('context:',context);
-  
+  console.log('children:', children);
+  console.log('result:[]-', array);
+  console.log('prefix:null-', prefix);
+  console.log('func:', func);
+  console.log('context:', context);
+
   let escapedPrefix = '';
+
+  // 如果字符串中有连续多个 / 的话，在匹配的字串后再加 /
   if (prefix != null) {
     escapedPrefix = escapeUserProvidedKey(prefix) + '/';
   }
-  
+
+  // 从pool中找一个对象
+  // [],'',(item)=>{return [item,[item,] ]},undefined
+
+  // traverseContext=
+  //  {
+  //    result:[],
+  //    keyPrefix:'',
+  //    func:(item)=>{return [item,[item,] ]},
+  //    context:undefined,
+  //    count:0,
+  //  }
   const traverseContext = getPooledTraverseContext(
     array,
     escapedPrefix,
     func,
     context,
   );
+  // 将嵌套的数组展平
   traverseAllChildren(children, mapSingleChildIntoContext, traverseContext);
   releaseTraverseContext(traverseContext);
 }
@@ -343,16 +429,19 @@ function mapIntoWithKeyPrefixInternal(children, array, prefix, func, context) {
  * @param {*} context Context for mapFunction.
  * @return {object} Object containing the ordered map of results.
  */
+// React.Children.map(props.children,item=>[item,[item,] ])
 function mapChildren(children, func, context) {
-  console.log("++++++++++++++++");
-  console.log('children:',children);
-  console.log('func:',func);
-  console.log('context:',context);
-  console.log("++++++++++++++++");
+  console.log('%c++++++++++++++++', 'color:#f00');
+  console.log('children:', children);
+  console.log('func:', func);
+  console.log('context:', context);
+  console.log('%c++++++++++++++++', 'color:#f00');
   if (children == null) {
     return children;
   }
   const result = [];
+  // 进行基本的判断和初始化后，调用该方法
+  // (props.children,[],null,(item)=>{return [item,[item,] ]},undefined)
   mapIntoWithKeyPrefixInternal(children, result, null, func, context);
   return result;
 }
@@ -373,6 +462,7 @@ function countChildren(children) {
 /**
  * Flatten a children object (typically specified as `props.children`) and
  * return an array with appropriately re-keyed children.
+ * 平铺一个child对象(通常指定为' props.children ')，并返回一个具有适当重设键的子对象的数组。
  *
  * See https://reactjs.org/docs/react-api.html#reactchildrentoarray
  */
@@ -404,9 +494,10 @@ function onlyChild(children) {
   return children;
 }
 
+// as就是重命名了，map即mapChildren
 export {
   forEachChildren as forEach,
-  mapChildren as map,
+  mapChildren as map, // 将children根据传入function由嵌套多维关系平铺展开成一维
   countChildren as count,
   onlyChild as only,
   toArray,

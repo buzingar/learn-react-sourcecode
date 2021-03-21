@@ -7,7 +7,7 @@
 
 import invariant from 'shared/invariant';
 import lowPriorityWarning from 'shared/lowPriorityWarning';
-
+// 报警告用的
 import ReactNoopUpdateQueue from './ReactNoopUpdateQueue';
 
 const emptyObject = {};
@@ -17,10 +17,12 @@ if (__DEV__) {
 
 /**
  * Base class helpers for the updating state of a component.
+ * 构造函数 Component 中需要注意的两点分别是 refs 和 updater，后者是组件中相当重要的一个属性，
+ * 我们可以发现 setState 和 forceUpdate 都是调用了 updater 中的方法
  */
 function Component(props, context, updater) {
   // {name: "bubu"} {} undefined
-  console.log('Component:', props, context, updater)
+  console.log('Component:', props, context, updater);
   this.props = props;
   this.context = context;
   // If a component has string refs, we will assign a different object later.
@@ -129,6 +131,8 @@ ComponentDummy.prototype = Component.prototype;
 
 /**
  * Convenience component with default shallow equality check for sCU.
+ * 内含 浅相等检查的shouldComponentUpdate() 的便捷组件
+ * PureComponent 继承自 Component，继承方法使用了很典型的寄生组合式。
  */
 function PureComponent(props, context, updater) {
   this.props = props;
@@ -144,4 +148,5 @@ pureComponentPrototype.constructor = PureComponent;
 Object.assign(pureComponentPrototype, Component.prototype);
 pureComponentPrototype.isPureReactComponent = true;
 
+// 两个基本组件，分别为 Component 及 PureComponent
 export {Component, PureComponent};

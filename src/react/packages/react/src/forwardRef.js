@@ -9,6 +9,14 @@ import {REACT_FORWARD_REF_TYPE, REACT_MEMO_TYPE} from 'shared/ReactSymbols';
 
 import warningWithoutStack from 'shared/warningWithoutStack';
 
+// 我们可以在参数中获得 ref
+/*
+ * const FancyButton = React.forwardRef((props, ref) => (
+ *   <button ref={ref} className="FancyButton">
+ *     {props.children}
+ *   </button>
+ * ))
+ */
 export default function forwardRef<Props, ElementType: React$ElementType>(
   render: (props: Props, ref: React$Ref<ElementType>) => React$Node,
 ) {

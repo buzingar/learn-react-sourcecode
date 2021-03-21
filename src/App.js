@@ -1,3 +1,4 @@
+// 为什么一旦使用 JSX 就必须引入 React 呢？
 import React from 'react';
 import ClassComp from './ClassComp';
 import Children from './Children';
@@ -7,6 +8,7 @@ import './App.css';
 console.log('React Version', React.version);
 
 function App(props) {
+  // JSX 代码会被 Babel 编译为 React.createElement，不引入 React 的话就不能使用 React.createElement 了
   return (
     <div className="App">
       <header className="App-header">

@@ -17,6 +17,7 @@ export type SuspenseConfig = {|
   busyMinDurationMs?: number,
 |};
 
+// TODOS 15 requestCurrentSuspenseConfig get null
 export function requestCurrentSuspenseConfig(): null | SuspenseConfig {
   return ReactCurrentBatchConfig.suspense;
 }

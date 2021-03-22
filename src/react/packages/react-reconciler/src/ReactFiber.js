@@ -118,6 +118,7 @@ export type Dependencies = {
 
 // A Fiber is work on a Component that needs to be done or was done. There can
 // be more than one per component.
+// Fiber工作于那些需要做或已经完成的组件。每个组件可以有多个。
 export type Fiber = {|
   // These first fields are conceptually members of an Instance. This used to
   // be split into a separate type and intersected with the other Fiber fields,
@@ -188,7 +189,7 @@ export type Fiber = {|
   mode: TypeOfMode,
 
   // Effect
-  effectTag: SideEffectTag,
+  effectTag: SideEffectTag, // number
 
   // Singly linked list fast path to the next fiber with side-effects.
   nextEffect: Fiber | null,
@@ -210,6 +211,12 @@ export type Fiber = {|
   // eventually have a pair. There are cases when we can clean up pairs to save
   // memory if we need to.
   alternate: Fiber | null,
+  // 其实在一个 React 应用中，通常来说都有两个 fiebr 树，一个叫做 old tree，另一个叫做 workInProgress tree。
+  // 前者对应着已经渲染好的 DOM 树，后者是正在执行更新中的 fiber tree，还能便于中断后恢复。
+  // 两棵树的节点互相引用，便于共享一些内部的属性，减少内存的开销。
+  // 毕竟前文说过每个组件或 DOM 都会对应着一个 fiber 对象，应用很大的话组成的 fiber 树也会很大，
+  // 如果两棵树都是各自把一些相同的属性创建一遍的话，会损失不少的内存空间及性能。
+  // 当更新结束以后，workInProgress tree 会将 old tree 替换掉，这种做法称之为 double buffering
 
   // Time spent rendering this Fiber and its descendants for the current update.
   // This tells us how well the tree makes use of sCU for memoization.
@@ -248,6 +255,8 @@ export type Fiber = {|
 
 let debugCounter = 1;
 
+// TODOS 11 FiberNode fiber 树其实是一个单链表树结构
+// 每个组件或者 DOM 节点都会对应着一个 fiber 对象
 function FiberNode(
   tag: WorkTag,
   pendingProps: mixed,
@@ -262,9 +271,9 @@ function FiberNode(
   this.stateNode = null;
 
   // Fiber
-  this.return = null;
-  this.child = null;
-  this.sibling = null;
+  this.return = null; // 父节点
+  this.child = null; // 第一个子节点
+  this.sibling = null; // 指向着下一个子节点
   this.index = 0;
 
   this.ref = null;
@@ -347,6 +356,7 @@ function FiberNode(
 //    is faster.
 // 5) It should be easy to port this to a C struct and keep a C implementation
 //    compatible.
+// TODOS 10 创建fiber
 const createFiber = function(
   tag: WorkTag,
   pendingProps: mixed,
@@ -566,6 +576,7 @@ export function resetWorkInProgress(
   return workInProgress;
 }
 
+// TODOS 9 创建host root fiber
 export function createHostRootFiber(tag: RootTag): Fiber {
   let mode;
   if (tag === ConcurrentRoot) {
@@ -582,7 +593,7 @@ export function createHostRootFiber(tag: RootTag): Fiber {
     // Without some nodes in the tree having empty base times.
     mode |= ProfileMode;
   }
-
+  // 搜索 TODOS 10
   return createFiber(HostRoot, null, null, mode);
 }
 

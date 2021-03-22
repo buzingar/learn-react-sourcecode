@@ -16,7 +16,7 @@ import invariant from 'shared/invariant';
 
 const {
   unstable_runWithPriority: Scheduler_runWithPriority,
-  unstable_scheduleCallback: Scheduler_scheduleCallback,
+  unstable_scheduleCallback: Scheduler_scheduleCallback, // 得到一个newTask对象
   unstable_cancelCallback: Scheduler_cancelCallback,
   unstable_shouldYield: Scheduler_shouldYield,
   unstable_requestPaint: Scheduler_requestPaint,
@@ -68,6 +68,7 @@ export const requestPaint =
   // Fall back gracefully if we're running an older version of Scheduler.
   Scheduler_requestPaint !== undefined ? Scheduler_requestPaint : () => {};
 
+// 同步队列
 let syncQueue: Array<SchedulerCallback> | null = null;
 let immediateQueueCallbackNode: mixed | null = null;
 let isFlushingSyncQueue: boolean = false;
@@ -100,6 +101,7 @@ export function getCurrentPriorityLevel(): ReactPriorityLevel {
   }
 }
 
+// TODOS 13-9 reactPriorityToSchedulerPriority
 function reactPriorityToSchedulerPriority(reactPriorityLevel) {
   switch (reactPriorityLevel) {
     case ImmediatePriority:
@@ -117,14 +119,18 @@ function reactPriorityToSchedulerPriority(reactPriorityLevel) {
   }
 }
 
+// TODOS 13-8 runWithPriority
 export function runWithPriority<T>(
   reactPriorityLevel: ReactPriorityLevel,
   fn: () => T,
 ): T {
+  // TODOS 调用13-9 reactPriorityToSchedulerPriority
   const priorityLevel = reactPriorityToSchedulerPriority(reactPriorityLevel);
+  // TODOS 调用13-10
   return Scheduler_runWithPriority(priorityLevel, fn);
 }
 
+// 异步调度
 export function scheduleCallback(
   reactPriorityLevel: ReactPriorityLevel,
   callback: SchedulerCallback,
@@ -134,6 +140,7 @@ export function scheduleCallback(
   return Scheduler_scheduleCallback(priorityLevel, callback, options);
 }
 
+// 同步调度
 export function scheduleSyncCallback(callback: SchedulerCallback) {
   // Push this callback into an internal queue. We'll flush these either in
   // the next tick, or earlier if something calls `flushSyncCallbackQueue`.
@@ -158,15 +165,19 @@ export function cancelCallback(callbackNode: mixed) {
   }
 }
 
+// TODOS 13-2 清空队列
 export function flushSyncCallbackQueue() {
   if (immediateQueueCallbackNode !== null) {
     const node = immediateQueueCallbackNode;
     immediateQueueCallbackNode = null;
+    // TODOS 13-3
     Scheduler_cancelCallback(node);
   }
+  // TODOS 调用13-7 flushSyncCallbackQueueImpl
   flushSyncCallbackQueueImpl();
 }
 
+// TODOS 13-7 flushSyncCallbackQueueImpl
 function flushSyncCallbackQueueImpl() {
   if (!isFlushingSyncQueue && syncQueue !== null) {
     // Prevent re-entrancy.
@@ -175,6 +186,7 @@ function flushSyncCallbackQueueImpl() {
     try {
       const isSync = true;
       const queue = syncQueue;
+      // TODOS 调用13-8 runWithPriority
       runWithPriority(ImmediatePriority, () => {
         for (; i < queue.length; i++) {
           let callback = queue[i];

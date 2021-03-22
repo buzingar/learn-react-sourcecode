@@ -70,6 +70,7 @@ var taskIdCounter = 1;
 var isSchedulerPaused = false;
 
 var currentTask = null;
+// 保存当前的优先等级，默认为普通
 var currentPriorityLevel = NormalPriority;
 
 // This is set while performing work, to prevent re-entrancy.
@@ -214,6 +215,9 @@ function workLoop(hasTimeRemaining, initialTime) {
   }
 }
 
+// TODOS 13-10 Scheduler_runWithPriority
+// 将当前优先级置为历史优先级，将传递的priorityLevel设置为currentPriorityLevel
+// 执行传递的eventHandler，执行完毕将历史优先级重置为当前优先级
 function unstable_runWithPriority(priorityLevel, eventHandler) {
   switch (priorityLevel) {
     case ImmediatePriority:
@@ -376,6 +380,7 @@ function unstable_getFirstCallbackNode() {
   return peek(taskQueue);
 }
 
+// TODOS 13-4 调用13-5获取时间，13-6标记
 function unstable_cancelCallback(task) {
   if (enableProfiling) {
     if (task.isQueued) {

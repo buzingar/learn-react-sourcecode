@@ -53,6 +53,7 @@ if (
       }
     }
   };
+  // TODOS 13-5
   const initialTime = Date.now();
   getCurrentTime = function() {
     return Date.now() - initialTime;

@@ -8,12 +8,16 @@
  */
 
 // UpdateQueue is a linked list of prioritized updates.
+// UpdateQueue是一个按优先级排序的更新的链表。
 //
 // Like fibers, update queues come in pairs: a current queue, which represents
 // the visible state of the screen, and a work-in-progress queue, which can be
 // mutated and processed asynchronously before it is committed — a form of
 // double buffering. If a work-in-progress render is discarded before finishing,
 // we create a new work-in-progress by cloning the current queue.
+// 与fibers一样，更新队列也是成对出现的:一个是当前队列，它代表屏幕的可见状态;
+// 另一个是工作中队列，它可以在提交之前进行突变和异步处理——这是一种双缓冲的形式。
+// 如果一个正在进行的工作呈现在完成之前被丢弃，我们将通过克隆当前队列来创建一个新的正在进行的工作。
 //
 // Both queues share a persistent, singly-linked list structure. To schedule an
 // update, we append it to the end of both queues. Each queue maintains a
@@ -22,6 +26,10 @@
 // the current queue, since we always work on that one. The current queue's
 // pointer is only updated during the commit phase, when we swap in the
 // work-in-progress.
+// 两个队列共享一个持久的、单链表结构。要调度更新，我们将其附加到两个队列的末尾。
+// 每个队列维护一个指向持久列表中尚未处理的第一次更新的指针。
+// 正在工作的指针总是有一个等于或大于当前队列的位置，因为我们总是在那个队列上工作。
+// 当前队列的指针只在提交阶段更新，当我们交换正在进行的工作时。
 //
 // For example:
 //
@@ -41,12 +49,18 @@
 // work-in-progress. (And because the work-in-progress queue becomes the
 // current queue once it commits, there's no danger of applying the same
 // update twice.)
+// 我们在两个队列中都添加内容的原因是，否则我们可能会在没有处理它们的情况下删除更新。
+// 例如，如果我们只向正在进行的工作队列添加更新，那么当通过从当前复制重新启动正在进行的工作呈现时，一些更新可能会丢失。
+// 类似地，如果我们只向当前队列添加更新，那么当已经在进行中的队列提交并与当前队列交换时，更新就会丢失。
+// 但是，通过添加到两个队列中，我们可以保证更新将是下一个正在进行的工作的一部分。
+// (而且由于在进行中的队列一旦提交就成为当前队列，因此不存在两次应用相同更新的危险。)
 //
 // Prioritization
 // --------------
 //
 // Updates are not sorted by priority, but by insertion; new updates are always
 // appended to the end of the list.
+// 更新不是按优先级排序，而是按插入排序;新的更新总是追加到列表的末尾。
 //
 // The priority is still important, though. When processing the update queue
 // during the render phase, only the updates with sufficient priority are
@@ -57,6 +71,11 @@
 // updates are sometimes processed twice, at two separate priorities. We also
 // keep track of a base state, that represents the state before the first
 // update in the queue is applied.
+// 不过，优先级仍然很重要。在呈现阶段处理更新队列时，结果中只包含具有足够优先级的更新。
+// 如果我们因为更新的优先级不够而跳过它，那么在较低优先级呈现期间，它将留在队列中等待处理。
+// 至关重要的是，跳过更新之后的所有更新也都保留在队列中*，而不管它们的优先级*。
+// 这意味着高优先级的更新有时会以两个不同的优先级处理两次。
+// 我们还跟踪一个基本状态，它表示应用队列中的第一个更新之前的状态。
 //
 // For example:
 //
@@ -83,6 +102,8 @@
 // updates when preceding updates are skipped, the final result is deterministic
 // regardless of priority. Intermediate state may vary according to system
 // resources, but the final state is always the same.
+// 因为我们按照插入顺序处理更新，并且在跳过之前的更新时重新基高优先级更新，所以无论优先级如何，最终结果都是确定的。
+// 中间状态可能因系统资源的不同而不同，但最终状态总是相同的。
 
 import type {Fiber} from './ReactFiber';
 import type {ExpirationTime} from './ReactFiberExpirationTime';
@@ -110,14 +131,17 @@ import warningWithoutStack from 'shared/warningWithoutStack';
 import {getCurrentPriorityLevel} from './SchedulerWithReactIntegration';
 
 export type Update<State> = {
+  // update 对象的内部属性
   expirationTime: ExpirationTime,
   suspenseConfig: null | SuspenseConfig,
 
   tag: 0 | 1 | 2 | 3,
+  // setState 的第一二个参数
   payload: any,
   callback: (() => mixed) | null,
-
-  next: Update<State> | null,
+  // 用于在队列中找到下一个节点
+  // 对于批量更新来说，我们可能会创建多个 update，因此我们需要将这些 update 串联并存储起来，在必要的时候拿出来用于更新 state。
+  next: Update<State> | null, // update 其实就是一个队列中的节点，这个属性可以用于帮助我们寻找下一个 update
   nextEffect: Update<State> | null,
 
   //DEV only
@@ -233,6 +257,7 @@ function appendUpdateToQueue<State>(
   }
 }
 
+// TODOS enqueueUpdate 函数核心作用就是创建或者获取一个队列，然后把 update 对象入队。
 export function enqueueUpdate<State>(fiber: Fiber, update: Update<State>) {
   // Update queues are created lazily.
   const alternate = fiber.alternate;

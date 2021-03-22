@@ -103,10 +103,13 @@ export type FiberRoot = {
   ...SuspenseCallbackOnlyFiberRootProperties,
 };
 
+// TODOS 8 FiberRootNode
+// 和 DOM 树一样，fiber 也会构建出一个树结构（每个 DOM 节点一定对应着一个 fiber 对象），
+// FiberRoot 就是整个 fiber 树的根节点
 function FiberRootNode(containerInfo, tag, hydrate) {
   this.tag = tag;
-  this.current = null;
-  this.containerInfo = containerInfo;
+  this.current = null; // RootFiber
+  this.containerInfo = containerInfo; // 容器信息 document.querySelector('#root')
   this.pendingChildren = null;
   this.pingCache = null;
   this.finishedExpirationTime = NoWork;
@@ -132,12 +135,15 @@ function FiberRootNode(containerInfo, tag, hydrate) {
   }
 }
 
+// TODOS 7 创建fiber root
 export function createFiberRoot(
   containerInfo: any,
   tag: RootTag,
   hydrate: boolean,
   hydrationCallbacks: null | SuspenseHydrationCallbacks,
 ): FiberRoot {
+  // 和 DOM 树一样，fiber 也会构建出一个树结构（每个 DOM 节点一定对应着一个 fiber 对象），
+  // FiberRoot 就是整个 fiber 树的根节点
   const root: FiberRoot = (new FiberRootNode(containerInfo, tag, hydrate): any);
   if (enableSuspenseCallback) {
     root.hydrationCallbacks = hydrationCallbacks;
@@ -145,9 +151,13 @@ export function createFiberRoot(
 
   // Cyclic construction. This cheats the type system right now because
   // stateNode is any.
+  // 循环结构。欺骗了类型系统，因为stateNode是any。
+  // 详见 RootFiber.js -> createHostRootFiber() -> createFiber()
   const uninitializedFiber = createHostRootFiber(tag);
+  // 两者还是相互引用的
   root.current = uninitializedFiber;
   uninitializedFiber.stateNode = root;
-
+  // 对应着 FiberRoot
+  // const fiber = document.querySelector('#root')._reactRootContainer._internalRoot
   return root;
 }

@@ -186,13 +186,14 @@ const {
 
 type ExecutionContext = number;
 
-const NoContext = /*                    */ 0b000000;
-const BatchedContext = /*               */ 0b000001;
-const EventContext = /*                 */ 0b000010;
-const DiscreteEventContext = /*         */ 0b000100;
-const LegacyUnbatchedContext = /*       */ 0b001000;
-const RenderContext = /*                */ 0b010000;
-const CommitContext = /*                */ 0b100000;
+// 这些常量都是定义的React中对应的执行栈
+const NoContext = /*                    */ 0b000000; // 0
+const BatchedContext = /*               */ 0b000001; // 1
+const EventContext = /*                 */ 0b000010; // 2
+const DiscreteEventContext = /*         */ 0b000100; // 4
+const LegacyUnbatchedContext = /*       */ 0b001000; // 8
+const RenderContext = /*                */ 0b010000; // 16
+const CommitContext = /*                */ 0b100000; // 32
 
 type RootExitStatus = 0 | 1 | 2 | 3 | 4;
 const RootIncomplete = 0;
@@ -206,6 +207,7 @@ export type Thenable = {
 };
 
 // Describes where we are in the React execution stack
+// 描述当前的执行栈
 let executionContext: ExecutionContext = NoContext;
 // The root we're working on
 let workInProgressRoot: FiberRoot | null = null;
@@ -272,9 +274,13 @@ let spawnedWorkDuringRender: null | Array<ExpirationTime> = null;
 // receive the same expiration time. Otherwise we get tearing.
 let currentEventTime: ExpirationTime = NoWork;
 
+// TODOS 14-1 计算当前时间 （最核心函数）
 export function requestCurrentTime() {
   if ((executionContext & (RenderContext | CommitContext)) !== NoContext) {
     // We're inside React, so it's fine to read the actual time.
+    // ! https://developer.mozilla.org/zh-CN/docs/Web/API/Performance/now
+    // window.performance.now()
+    // performance.timing.navigationStart + performance.now() 约等于 Date.now()
     return msToExpirationTime(now());
   }
   // We're not inside React, so we may be in the middle of a browser event.
@@ -287,6 +293,10 @@ export function requestCurrentTime() {
   return currentEventTime;
 }
 
+// TODOS 16 computeExpirationForFiber
+// expirationTime，这个时间和优先级有关，值越大，优先级越高。
+// 并且同步是优先级最高的，它的值为 1073741823，
+// 也就是之前我们看到的常量 MAGIC_NUMBER_OFFSET 加 1
 export function computeExpirationForFiber(
   currentTime: ExpirationTime,
   fiber: Fiber,
@@ -322,11 +332,13 @@ export function computeExpirationForFiber(
         break;
       case UserBlockingPriority:
         // TODO: Rename this to computeUserBlockingExpiration
+        // 交互事件，优先级较高
         expirationTime = computeInteractiveExpiration(currentTime);
         break;
       case NormalPriority:
       case LowPriority: // TODO: Handle LowPriority
         // TODO: Rename this to... something better.
+        // 异步，优先级较低
         expirationTime = computeAsyncExpiration(currentTime);
         break;
       case IdlePriority:
@@ -505,6 +517,11 @@ function markUpdateTimeFromFiberToRoot(fiber, expirationTime) {
 // should cancel the previous one. It also relies on commitRoot scheduling a
 // callback to render the next level, because that means we don't need a
 // separate callback per expiration time.
+// 使用这个函数和runRootCallback，以确保每个根只调度一个回调。
+// 它仍然可以直接调用renderRoot，但通过这个函数调度有助于避免过多的回调。
+// 它的工作原理是将回调节点和过期时间存储在根节点上。
+// 当一个新的回调函数出现时，它会比较过期时间，以确定是否应该取消前一个。
+// 它还依赖于commitRoot调度一个回调来呈现下一层，因为这意味着我们不需要在每个过期时间单独使用一个回调。
 function scheduleCallbackForRoot(
   root: FiberRoot,
   priorityLevel: ReactPriorityLevel,
@@ -708,16 +725,31 @@ export function discreteUpdates<A, B, C, R>(
   }
 }
 
+/*
+ * 如果我们想新增一个 effect 的话，可以这样写 effectTag |= Update；
+ * 如果我们想删除一个 effect 的话，可以这样写 effectTag &= ~Update。
+ */
+// TODOS 13 非批量更新
 export function unbatchedUpdates<A, R>(fn: (a: A) => R, a: A): R {
+  // 暂存当前执行栈
   const prevExecutionContext = executionContext;
+  // 更改执行栈，位运算
+  // 把 prevExecutionContext 的 BatchedContext 位置0，
+  // 然后把 LegacyUnbatchedContext 的位置1
   executionContext &= ~BatchedContext;
   executionContext |= LegacyUnbatchedContext;
+  // 最后通过 "|=" 将当前的执行栈更改为 "LegacyUnbatchedContext"
   try {
+    console.log('updateContainer-a:', a);
+    // 回调就是updateContainer(children, fiberRoot, parentComponent, callback)
+    // 详见ReactFiberReconciler.js 中的 TODOS 14 updateContainer
     return fn(a);
   } finally {
+    // 在执行完回调之后，会恢复执行栈
     executionContext = prevExecutionContext;
     if (executionContext === NoContext) {
       // Flush the immediate callbacks that were scheduled during this batch
+      // TODOS 13-1 清空回调队列
       flushSyncCallbackQueue();
     }
   }

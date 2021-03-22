@@ -39,7 +39,7 @@ import {
   findHostInstanceWithWarning,
   flushPassiveEffects,
   IsThisRendererActing,
-} from 'react-reconciler/inline.dom';
+} from 'react-reconciler/inline.dom'; // ReactFiberReconciler
 import {createPortal as createPortalImpl} from 'shared/ReactPortal';
 import {canUseDOM} from 'shared/ExecutionEnvironment';
 import {setBatchingImplementation} from 'legacy-events/ReactGenericBatching';
@@ -364,10 +364,11 @@ ReactWork.prototype._onCommit = function(): void {
   }
 };
 
+// TODOS 5 同步化的 react root 构造函数
 function ReactSyncRoot(
   container: DOMContainer,
-  tag: RootTag,
-  options: void | RootOptions,
+  tag: RootTag, // 0
+  options: void | RootOptions, // undefined
 ) {
   // Tag is either LegacyRoot or Concurrent Root
   const hydrate = options != null && options.hydrate === true;
@@ -377,10 +378,13 @@ function ReactSyncRoot(
   this._internalRoot = root;
 }
 
+// TODOS createRoot() 内部 new ReactRoot
+// ReactRoot -> createContainer() -> createFiberRoot() -> createHostRootFiber() -> createFiber() -> new FiberNode()
 function ReactRoot(container: DOMContainer, options: void | RootOptions) {
   const hydrate = options != null && options.hydrate === true;
   const hydrationCallbacks =
     (options != null && options.hydrationOptions) || null;
+  // 创建了一个 FiberRoot 对象，并挂载到了 _internalRoot 上
   const root = createContainer(
     container,
     ConcurrentRoot,
@@ -390,11 +394,14 @@ function ReactRoot(container: DOMContainer, options: void | RootOptions) {
   this._internalRoot = root;
 }
 
+// 存在root时，使用挂载到原型链上的render()
 ReactRoot.prototype.render = ReactSyncRoot.prototype.render = function(
   children: ReactNodeList,
   callback: ?() => mixed,
 ): Work {
+  // 首先取出 root，这里的 root 指的是 FiberRoot
   const root = this._internalRoot;
+  // 创建了 ReactWork 的实例，为了在组件渲染或更新后把所有传入 ReactDom.render 中的回调函数全部执行一遍。
   const work = new ReactWork();
   callback = callback === undefined ? null : callback;
   if (__DEV__) {
@@ -403,6 +410,7 @@ ReactRoot.prototype.render = ReactSyncRoot.prototype.render = function(
   if (callback !== null) {
     work.then(callback);
   }
+  // TODOS 看14
   updateContainer(children, root, null, work._onCommit);
   return work;
 };
@@ -471,6 +479,7 @@ function isValidContainer(node) {
   );
 }
 
+// TODOS 4-1 获取容器中的root element
 function getReactRootElementInContainer(container: any) {
   if (!container) {
     return null;
@@ -485,7 +494,9 @@ function getReactRootElementInContainer(container: any) {
   }
 }
 
+// TODOS 4 遗产启发式的？
 function shouldHydrateDueToLegacyHeuristic(container) {
+  // rootElement = container.firstChild / container.documentElement / null
   const rootElement = getReactRootElementInContainer(container);
   console.log('rootElement:', rootElement);
   return !!(
@@ -504,10 +515,12 @@ setBatchingImplementation(
 
 let warnedAboutHydrateAPI = false;
 
+// TODOS 3 根据container创建root节点
 function legacyCreateRootFromDOMContainer(
   container: DOMContainer,
   forceHydrate: boolean,
 ): _ReactSyncRoot {
+  // SSR相关，一般为false
   const shouldHydrate =
     forceHydrate || shouldHydrateDueToLegacyHeuristic(container);
   // First clear any existing content.
@@ -549,7 +562,7 @@ function legacyCreateRootFromDOMContainer(
   // Legacy roots are not batched.
   return new ReactSyncRoot(
     container,
-    LegacyRoot,
+    LegacyRoot, // export const LegacyRoot = 0;
     shouldHydrate
       ? {
           hydrate: true,
@@ -558,8 +571,8 @@ function legacyCreateRootFromDOMContainer(
   );
 }
 
+// TODOS 2 渲染subtree到容器中
 /**
- * todo 2 渲染subtree到容器中
  * 在调用 legacyRenderSubtreeIntoContainer 函数时写死了第四个参数 forceHydrate 为 false。这个参数为 true 时表明了是服务端渲染
  * parentComponent: null
  * children: element: React$Element<any>
@@ -583,23 +596,28 @@ function legacyRenderSubtreeIntoContainer(
   // member of intersection type." Whyyyyyy.
   let root: _ReactSyncRoot = (container._reactRootContainer: any); // undefined
   let fiberRoot;
+  // 初始化时，root不存在，创建root节点
   if (!root) {
     // Initial mount
     // ReactSyncRoot {_internalRoot: FiberRootNode}
     // root 是 ReactRoot 构造函数构造出来的，并且内部有一个 _internalRoot 对象
+    // TODOS 2-1 调用3
     root = container._reactRootContainer = legacyCreateRootFromDOMContainer(
       container,
       forceHydrate,
     );
     fiberRoot = root._internalRoot;
+    // callback 很少传过，至少我做的项目没见有传此参数的
     if (typeof callback === 'function') {
       const originalCallback = callback;
       callback = function() {
+        // TODOS 2-2 调用12
         const instance = getPublicRootInstance(fiberRoot);
         originalCallback.call(instance);
       };
     }
     // Initial mount should not be batched.
+    // TODOS 2-3 更新，调用13
     unbatchedUpdates(() => {
       updateContainer(children, fiberRoot, parentComponent, callback);
     });
@@ -631,6 +649,7 @@ function createPortal(
   return createPortalImpl(children, container, null, key);
 }
 
+// TODOS ReactDOM render/findDOMNode
 const ReactDOM: Object = {
   createPortal,
 
@@ -690,7 +709,10 @@ const ReactDOM: Object = {
     );
   },
 
-  // todo 1 render() 切入点
+  // TODOS 1 render() 切入点
+  // element 挂载的组件
+  // container 挂载点 #root
+  // callback
   render(
     element: React$Element<any>,
     container: DOMContainer,
@@ -709,6 +731,8 @@ const ReactDOM: Object = {
         enableStableConcurrentModeAPIs ? 'createRoot' : 'unstable_createRoot',
       );
     }
+
+    // legacyRenderSubtreeIntoContainer 将subtree渲染进container
     return legacyRenderSubtreeIntoContainer(
       null,
       element,
@@ -768,6 +792,8 @@ const ReactDOM: Object = {
       }
 
       // Unmount should not be batched.
+      // 批量更新（batchedUpdate）
+      // 不批量更新
       unbatchedUpdates(() => {
         legacyRenderSubtreeIntoContainer(null, null, container, false, () => {
           container._reactRootContainer = null;
@@ -909,6 +935,7 @@ function warnIfReactDOMContainerInDEV(container) {
   }
 }
 
+// false
 if (enableStableConcurrentModeAPIs) {
   ReactDOM.createRoot = createRoot;
   ReactDOM.createSyncRoot = createSyncRoot;

@@ -18,6 +18,7 @@ if (!ReactSharedInternals.hasOwnProperty('ReactCurrentDispatcher')) {
     current: null,
   };
 }
+// TODOS ReactCurrentBatchConfig.suspense = null;
 if (!ReactSharedInternals.hasOwnProperty('ReactCurrentBatchConfig')) {
   ReactSharedInternals.ReactCurrentBatchConfig = {
     suspense: null,

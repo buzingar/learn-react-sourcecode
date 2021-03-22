@@ -126,6 +126,7 @@ function getContextForSubtree(
   return parentContext;
 }
 
+// TODOS scheduleRootUpdate
 function scheduleRootUpdate(
   current: Fiber,
   element: ReactNodeList,
@@ -151,9 +152,11 @@ function scheduleRootUpdate(
     }
   }
 
+  // 创建一个 update，这个对象和 setState 息息相关
   const update = createUpdate(expirationTime, suspenseConfig);
   // Caution: React DevTools currently depends on this property
   // being called "element".
+  // 在 render 的过程中其实也是一次更新的操作，但是我们并没有 setState，因此就把 payload 赋值为 {element} 了
   update.payload = {element};
 
   callback = callback === undefined ? null : callback;
@@ -164,15 +167,19 @@ function scheduleRootUpdate(
         'function. Instead received: %s.',
       callback,
     );
+    // 接下来我们将 callback 赋值给 update 的属性，这里的 callback 还是 ReactDom.render 的第三个参数。
     update.callback = callback;
   }
 
+  // 创建出来的 update 对象插入队列中
   enqueueUpdate(current, update);
+  // TODOS 开始调度 最后调用 scheduleWork 函数，这里开始就是调度相关的内容
   scheduleWork(current, expirationTime);
 
   return expirationTime;
 }
 
+// TODOS updateContainerAtExpirationTime
 export function updateContainerAtExpirationTime(
   element: ReactNodeList,
   container: OpaqueRoot,
@@ -291,22 +298,27 @@ function findHostInstanceWithWarning(
   return findHostInstance(component);
 }
 
+// TODOS 6 创建container
 export function createContainer(
   containerInfo: Container,
   tag: RootTag,
   hydrate: boolean,
   hydrationCallbacks: null | SuspenseHydrationCallbacks,
 ): OpaqueRoot {
+  // TODOS 调用createxxx 创建FiberRoot
   return createFiberRoot(containerInfo, tag, hydrate, hydrationCallbacks);
 }
 
+// TODOS 14 updateContainer
 export function updateContainer(
   element: ReactNodeList,
   container: OpaqueRoot,
   parentComponent: ?React$Component<any, any>,
   callback: ?Function,
 ): ExpirationTime {
+  // 先从 FiberRoot 的 current 属性中取出它的 fiber 对象，然后计算了两个时间
   const current = container.current;
+  // 当前时间
   const currentTime = requestCurrentTime();
   if (__DEV__) {
     // $FlowExpectedError - jest isn't a global, and isn't recognized outside of tests
@@ -315,12 +327,15 @@ export function updateContainer(
       warnIfNotScopedWithMatchingAct(current);
     }
   }
+  // 直接看ReactSharedInternals.js
   const suspenseConfig = requestCurrentSuspenseConfig();
+  // 计算失效时间
   const expirationTime = computeExpirationForFiber(
     currentTime,
     current,
     suspenseConfig,
   );
+  // TODOS
   return updateContainerAtExpirationTime(
     element,
     container,
@@ -347,6 +362,7 @@ export {
   IsThisRendererActing,
 };
 
+// TODOS 12 getPublicRootInstance
 export function getPublicRootInstance(
   container: OpaqueRoot,
 ): React$Component<any, any> | PublicInstance | null {
@@ -356,6 +372,7 @@ export function getPublicRootInstance(
   }
   switch (containerFiber.child.tag) {
     case HostComponent:
+      // 没什么好调用的，就是返回containerFiber.child.stateNode自身
       return getPublicInstance(containerFiber.child.stateNode);
     default:
       return containerFiber.child.stateNode;

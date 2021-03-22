@@ -183,6 +183,8 @@ export function getChildHostContext(
   return getChildNamespace(parentNamespace, type);
 }
 
+// TODOS 12-1 由getPublicRootInstance 调用 getPublicInstance
+// Instance 是 Element，Element不知道在哪定义的
 export function getPublicInstance(instance: Instance): * {
   return instance;
 }

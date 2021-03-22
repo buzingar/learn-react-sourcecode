@@ -475,8 +475,10 @@ function getReactRootElementInContainer(container: any) {
   if (!container) {
     return null;
   }
-
+  // console.log('container.nodeType:', container.nodeType);
+  // console.log('DOCUMENT_NODE:', DOCUMENT_NODE);
   if (container.nodeType === DOCUMENT_NODE) {
+    // console.log('container.documentElement:', container.documentElement);
     return container.documentElement;
   } else {
     return container.firstChild;
@@ -485,6 +487,7 @@ function getReactRootElementInContainer(container: any) {
 
 function shouldHydrateDueToLegacyHeuristic(container) {
   const rootElement = getReactRootElementInContainer(container);
+  console.log('rootElement:', rootElement);
   return !!(
     rootElement &&
     rootElement.nodeType === ELEMENT_NODE &&
@@ -511,6 +514,7 @@ function legacyCreateRootFromDOMContainer(
   if (!shouldHydrate) {
     let warned = false;
     let rootSibling;
+    // 容器内部不要含有任何的子节点
     while ((rootSibling = container.lastChild)) {
       if (__DEV__) {
         if (
@@ -554,10 +558,19 @@ function legacyCreateRootFromDOMContainer(
   );
 }
 
+/**
+ * todo 2 渲染subtree到容器中
+ * 在调用 legacyRenderSubtreeIntoContainer 函数时写死了第四个参数 forceHydrate 为 false。这个参数为 true 时表明了是服务端渲染
+ * parentComponent: null
+ * children: element: React$Element<any>
+ * container: container: DOMContainer
+ * forceHydrate: false
+ * callback: ?Function
+ */
 function legacyRenderSubtreeIntoContainer(
-  parentComponent: ?React$Component<any, any>,
-  children: ReactNodeList,
-  container: DOMContainer,
+  parentComponent: ?React$Component<any, any>, // null
+  children: ReactNodeList, // element, jsx、组件等等
+  container: DOMContainer, // 挂载点
   forceHydrate: boolean,
   callback: ?Function,
 ) {
@@ -565,13 +578,15 @@ function legacyRenderSubtreeIntoContainer(
     topLevelUpdateWarnings(container);
     warnOnInvalidCallback(callback === undefined ? null : callback, 'render');
   }
-
+  console.log('React-dom >>> container:', container._reactRootContainer);
   // TODO: Without `any` type, Flow says "Property cannot be accessed on any
   // member of intersection type." Whyyyyyy.
-  let root: _ReactSyncRoot = (container._reactRootContainer: any);
+  let root: _ReactSyncRoot = (container._reactRootContainer: any); // undefined
   let fiberRoot;
   if (!root) {
     // Initial mount
+    // ReactSyncRoot {_internalRoot: FiberRootNode}
+    // root 是 ReactRoot 构造函数构造出来的，并且内部有一个 _internalRoot 对象
     root = container._reactRootContainer = legacyCreateRootFromDOMContainer(
       container,
       forceHydrate,
@@ -675,6 +690,7 @@ const ReactDOM: Object = {
     );
   },
 
+  // todo 1 render() 切入点
   render(
     element: React$Element<any>,
     container: DOMContainer,
@@ -697,7 +713,7 @@ const ReactDOM: Object = {
       null,
       element,
       container,
-      false,
+      false, // forceHydrate
       callback,
     );
   },

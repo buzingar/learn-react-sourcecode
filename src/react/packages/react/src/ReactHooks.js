@@ -15,9 +15,12 @@ import type {
 import invariant from 'shared/invariant';
 import warning from 'shared/warning';
 import {REACT_RESPONDER_TYPE} from 'shared/ReactSymbols';
-
+// ReactCurrentDispatcher: {current: null}
 import ReactCurrentDispatcher from './ReactCurrentDispatcher';
 
+/**
+ * 返回一个dispatcher实例，dispatcher可以调用内置的hooks方法
+ */
 function resolveDispatcher() {
   const dispatcher = ReactCurrentDispatcher.current;
   invariant(

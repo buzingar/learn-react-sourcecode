@@ -130,12 +130,15 @@ if (__DEV__) {
 }
 
 export type Hook = {
+  // TODOZ
   memoizedState: any,
 
-  baseState: any,
-  baseUpdate: Update<any, any> | null,
-  queue: UpdateQueue<any, any> | null,
+  // TODOZ 由useReducer()hook专门用于缓存已经调度的操作和基本状态
+  baseState: any, // 将给予reducer的状态对象
+  baseUpdate: Update<any, any> | null, // 最近的创建了最新baseState的调度操作
+  queue: UpdateQueue<any, any> | null, // 调度操作的队列，等待进入reducer
 
+  // TODOZ
   next: Hook | null,
 };
 
@@ -360,6 +363,7 @@ function areHookInputsEqual(
   return true;
 }
 
+// TODOZ renderWithHooks
 export function renderWithHooks(
   current: Fiber | null,
   workInProgress: Fiber,
@@ -458,7 +462,7 @@ export function renderWithHooks(
   ReactCurrentDispatcher.current = ContextOnlyDispatcher;
 
   const renderedWork: Fiber = (currentlyRenderingFiber: any);
-
+  // React会把hook对象挂到Fiber节点的 memoizedState 属性上
   renderedWork.memoizedState = firstWorkInProgressHook;
   renderedWork.expirationTime = remainingExpirationTime;
   renderedWork.updateQueue = (componentUpdateQueue: any);
@@ -551,9 +555,11 @@ export function resetHooks(): void {
   numberOfReRenders = 0;
 }
 
+// TODOZ
 function mountWorkInProgressHook(): Hook {
+  // 初始化的hook对象
   const hook: Hook = {
-    memoizedState: null,
+    memoizedState: null, // 当前的state值
 
     baseState: null,
     queue: null,
@@ -562,6 +568,7 @@ function mountWorkInProgressHook(): Hook {
     next: null,
   };
 
+  // workInProgressHook是一个全局变量，表示当前正在处理的hook
   if (workInProgressHook === null) {
     // This is the first hook in the list
     firstWorkInProgressHook = workInProgressHook = hook;
@@ -569,6 +576,9 @@ function mountWorkInProgressHook(): Hook {
     // Append to the end of the list
     workInProgressHook = workInProgressHook.next = hook;
   }
+  // hook其实是以链表的形式存储起来的。每一个hook都有一个指向下一个hook的指针
+  // hookA.next = hookB;
+  // hookB.next = hookC;
   return workInProgressHook;
 }
 
@@ -621,10 +631,13 @@ function createFunctionComponentUpdateQueue(): FunctionComponentUpdateQueue {
   };
 }
 
+// TODOZ
 function basicStateReducer<S>(state: S, action: BasicStateAction<S>): S {
+  // 我们其实可以传入一个函数作为setState的参数，通过函数返回最新的state。
   return typeof action === 'function' ? action(state) : action;
 }
 
+// TODOZ mountReducer(reducer, initialArg, init)
 function mountReducer<S, I, A>(
   reducer: (S, A) => S,
   initialArg: I,
@@ -644,6 +657,7 @@ function mountReducer<S, I, A>(
     lastRenderedReducer: reducer,
     lastRenderedState: (initialState: any),
   });
+  // 调用setState 其实就是触发 dispatchAction
   const dispatch: Dispatch<A> = (queue.dispatch = (dispatchAction.bind(
     null,
     // Flow doesn't know this is non-null, but we do.
@@ -653,6 +667,7 @@ function mountReducer<S, I, A>(
   return [hook.memoizedState, dispatch];
 }
 
+// TODOZ
 function updateReducer<S, I, A>(
   reducer: (S, A) => S,
   initialArg: I,
@@ -667,6 +682,7 @@ function updateReducer<S, I, A>(
 
   queue.lastRenderedReducer = reducer;
 
+  // 这里是为了处理当前render周期中，再次触发render的问题
   if (numberOfReRenders > 0) {
     // This is a re-render. Apply the new render phase updates to the previous
     // work-in-progress hook.
@@ -711,6 +727,7 @@ function updateReducer<S, I, A>(
   }
 
   // The last update in the entire queue
+  // 最近的一次更新
   const last = queue.last;
   // The last update that is part of the base state.
   const baseUpdate = hook.baseUpdate;
@@ -736,6 +753,7 @@ function updateReducer<S, I, A>(
     let prevUpdate = baseUpdate;
     let update = first;
     let didSkip = false;
+    // 调度，获取最新的state
     do {
       const updateExpirationTime = update.expirationTime;
       if (updateExpirationTime < renderExpirationTime) {
@@ -771,6 +789,7 @@ function updateReducer<S, I, A>(
           // current reducer, we can use the eagerly computed state.
           newState = ((update.eagerState: any): S);
         } else {
+          // 通过reducer计算出最新的state
           const action = update.action;
           newState = reducer(newState, action);
         }
@@ -801,20 +820,26 @@ function updateReducer<S, I, A>(
   return [hook.memoizedState, dispatch];
 }
 
+// TODOZ mountState
 function mountState<S>(
   initialState: (() => S) | S,
 ): [S, Dispatch<BasicStateAction<S>>] {
+  // 组件挂载时，生成一个hook对象
   const hook = mountWorkInProgressHook();
+  // 初始state绑在hook对象上
   if (typeof initialState === 'function') {
     initialState = initialState();
   }
   hook.memoizedState = hook.baseState = initialState;
+  // 记录hook值的改变
   const queue = (hook.queue = {
     last: null,
     dispatch: null,
     lastRenderedReducer: basicStateReducer,
     lastRenderedState: (initialState: any),
   });
+  // 生成更改状态的方法。
+  // 这里的 currentlyRenderingFiber $1是一个全局变量，表示当前正在渲染的Fiber节点。
   const dispatch: Dispatch<
     BasicStateAction<S>,
   > = (queue.dispatch = (dispatchAction.bind(
@@ -826,6 +851,7 @@ function mountState<S>(
   return [hook.memoizedState, dispatch];
 }
 
+// TODOZ
 function updateState<S>(
   initialState: (() => S) | S,
 ): [S, Dispatch<BasicStateAction<S>>] {
@@ -1109,6 +1135,7 @@ function updateMemo<T>(
   return nextValue;
 }
 
+// TODOZ
 function dispatchAction<S, A>(
   fiber: Fiber,
   queue: UpdateQueue<S, A>,
@@ -1186,7 +1213,9 @@ function dispatchAction<S, A>(
     }
 
     // Append the update to the end of the list.
+    // 这里的queue，是之前传入的hook对象中的queue。这里保留了一个引用，很重要。
     const last = queue.last;
+    // 更新链表
     if (last === null) {
       // This is the first update. Create a circular list.
       update.next = update;
@@ -1199,7 +1228,7 @@ function dispatchAction<S, A>(
       last.next = update;
     }
     queue.last = update;
-
+    // 接下来，交给React去调度处理
     if (
       fiber.expirationTime === NoWork &&
       (alternate === null || alternate.expirationTime === NoWork)
@@ -1250,6 +1279,7 @@ function dispatchAction<S, A>(
   }
 }
 
+// TODOZ ContextOnlyDispatcher
 export const ContextOnlyDispatcher: Dispatcher = {
   readContext,
 

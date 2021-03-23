@@ -376,6 +376,7 @@ export function computeUniqueAsyncExpiration(): ExpirationTime {
   return result;
 }
 
+// TODOX 调度开始
 export function scheduleUpdateOnFiber(
   fiber: Fiber,
   expirationTime: ExpirationTime,
@@ -884,8 +885,10 @@ function renderRoot(
 
   // If we have a work-in-progress fiber, it means there's still work to do
   // in this root.
+  // 如果仍存在workInProgress fiber树，意味着仍有工作要做
   if (workInProgress !== null) {
     const prevExecutionContext = executionContext;
+    // 按位或 executionContext = executionContext | RenderContext
     executionContext |= RenderContext;
     let prevDispatcher = ReactCurrentDispatcher.current;
     if (prevDispatcher === null) {
@@ -894,6 +897,7 @@ function renderRoot(
       // nicer error messages.
       prevDispatcher = ContextOnlyDispatcher;
     }
+    // TODOZ ReactCurrentDispatcher.current 在此处被赋值
     ReactCurrentDispatcher.current = ContextOnlyDispatcher;
     let prevInteractions: Set<Interaction> | null = null;
     if (enableSchedulerTracing) {
@@ -914,6 +918,7 @@ function renderRoot(
           // Restart at the current time.
           executionContext = prevExecutionContext;
           resetContextDependencies();
+          // TODOZ
           ReactCurrentDispatcher.current = prevDispatcher;
           if (enableSchedulerTracing) {
             __interactionsRef.current = ((prevInteractions: any): Set<
@@ -974,6 +979,7 @@ function renderRoot(
 
     executionContext = prevExecutionContext;
     resetContextDependencies();
+    // TODOZ
     ReactCurrentDispatcher.current = prevDispatcher;
     if (enableSchedulerTracing) {
       __interactionsRef.current = ((prevInteractions: any): Set<Interaction>);

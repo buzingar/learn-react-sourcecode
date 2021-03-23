@@ -1218,6 +1218,7 @@ function mountIncompleteClassComponent(
   );
 }
 
+// Indeterminate 不确定的；模糊的；含混的
 function mountIndeterminateComponent(
   _current,
   workInProgress,

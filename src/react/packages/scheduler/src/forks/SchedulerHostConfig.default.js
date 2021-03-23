@@ -20,6 +20,8 @@ import {
 // layout, paint and other browser work is counted against the available time.
 // The frame rate is dynamically adjusted.
 
+// TODOS requestAnimationFrame + 计算帧时间及下一帧时间 + MessageChannel 就是我们实现 requestIdleCallback 的三个关键点了。
+
 export let requestHostCallback;
 export let cancelHostCallback;
 export let requestHostTimeout;
@@ -81,6 +83,14 @@ if (
   };
   requestPaint = forceFrameRate = function() {};
 } else {
+  // 首先每个任务都会有各自的优先级，通过当前时间加上优先级所对应的常量我们可以计算出 expriationTime，高优先级的任务会打断低优先级任务
+  // 在调度之前，判断当前任务是否过期，过期的话无须调度，直接调用 port.postMessage(undefined)，这样就能在渲染后马上执行过期任务了
+  // 如果任务没有过期，就通过 requestAnimationFrame 启动定时器，在重绘前调用回调方法
+  // 在回调方法中我们首先需要计算每一帧的时间以及下一帧的时间，然后执行 port.postMessage(undefined)
+  // channel.port1.onmessage 会在渲染后被调用，在这个过程中我们首先需要去判断当前时间是否小于下一帧时间。
+  // 如果小于的话就代表我们尚有空余时间去执行任务；
+  // 如果大于的话就代表当前帧已经没有空闲时间了，这时候我们需要去判断是否有任务过期，过期的话不管三七二十一还是得去执行这个任务。
+  // 如果没有过期的话，那就只能把这个任务丢到下一帧看能不能执行了
   // Capture local references to native APIs, in case a polyfill overrides them.
   const performance = window.performance;
   const Date = window.Date;

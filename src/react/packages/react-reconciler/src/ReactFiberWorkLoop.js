@@ -378,8 +378,8 @@ export function computeUniqueAsyncExpiration(): ExpirationTime {
 
 // TODOX 调度开始
 export function scheduleUpdateOnFiber(
-  fiber: Fiber,
-  expirationTime: ExpirationTime,
+  fiber: Fiber, // fiber: FiberNode {}
+  expirationTime: ExpirationTime, // 1073741823
 ) {
   checkForNestedUpdates();
   warnAboutInvalidUpdatesOnClassComponentsInDEV(fiber);
@@ -741,7 +741,7 @@ export function unbatchedUpdates<A, R>(fn: (a: A) => R, a: A): R {
   executionContext |= LegacyUnbatchedContext;
   // 最后通过 "|=" 将当前的执行栈更改为 "LegacyUnbatchedContext"
   try {
-    console.log('updateContainer-a:', a);
+    // console.log('updateContainer-a:', a);
     // 回调就是updateContainer(children, fiberRoot, parentComponent, callback)
     // 详见ReactFiberReconciler.js 中的 TODOS 14 updateContainer
     return fn(a);
@@ -897,6 +897,7 @@ function renderRoot(
       // nicer error messages.
       prevDispatcher = ContextOnlyDispatcher;
     }
+
     // TODOZ ReactCurrentDispatcher.current 在此处被赋值
     ReactCurrentDispatcher.current = ContextOnlyDispatcher;
     let prevInteractions: Set<Interaction> | null = null;

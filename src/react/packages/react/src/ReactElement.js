@@ -109,11 +109,17 @@ function defineRefPropWarningGetter(props, displayName) {
  * indicating filename, line number, and/or other information.
  * @internal
  */
+
+/*
+TODOA ReactElement()
+babel将jsx代码转译为React.CreateElement()方法调用
+*/
+
 const ReactElement = function(type, key, ref, self, source, owner, props) {
   const element = {
     // This tag allows us to uniquely identify this as a React Element
     // 核心就是通过 $$typeof 来帮助我们识别这是一个 ReactElement
-    $$typeof: REACT_ELEMENT_TYPE,
+    $$typeof: REACT_ELEMENT_TYPE, // Symbol.for('react.element') || 0xeac7
 
     // Built-in properties that belong on the element
     type: type,
@@ -124,7 +130,6 @@ const ReactElement = function(type, key, ref, self, source, owner, props) {
     // Record the component responsible for creating this element.
     _owner: owner,
   };
-  console.log('ReactElement():', element);
 
   if (__DEV__) {
     // The validation flag is currently mutative. We put it on
@@ -317,13 +322,21 @@ export function jsxDEV(type, config, maybeKey, source, self) {
  *
  * See https://reactjs.org/docs/react-api.html#createelement
  */
+/* 
+TODOA createElement() 
+此方法调用 React.createElement('div', {className:'App'}, children)
+jsx经babel转译后就成了此方法调用形式
+config 其实放的就是各种属性
+children 如果没标签，就是字符串，有标签就是 react element 即 {$$typeof:'', props:{各种属性, children}}
+*/
 export function createElement(type, config, children) {
-  console.error('start -------------------------------------');
+  console.groupCollapsed();
   console.log('type:', type); // * function string
   console.log('defaultProps:', type.defaultProps);
-  console.log('config:', config);
+  console.info('config:', config);
   console.log('children:', children);
-  console.warn('end   -------------------------------------');
+  console.groupEnd();
+
   let propName;
 
   // Reserved names are extracted
@@ -365,13 +378,14 @@ export function createElement(type, config, children) {
   // the newly allocated props object.
   // 对于 children 的操作，arguments除前俩外都是children
   // 首先把第二个参数之后的参数取出来，然后判断长度是否大于一。
-  // 大于一的话就代表有多个 children，这时候 props.children 会是一个数组，否则的话只是一个对象。
+  // 大于一的话就代表有多个 children，这时候 props.children 会是一个数组，否则的话只是一个对象或字符串。
   // 因此我们需要注意在对 props.children 进行遍历的时候要注意它是否是数组
   const childrenLength = arguments.length - 2;
-  console.log('arguments:', childrenLength);
+
   if (childrenLength === 1) {
-    props.children = children; // string
+    props.children = children; // string || React Element
   } else if (childrenLength > 1) {
+    // 定长数组
     const childArray = Array(childrenLength);
     for (let i = 0; i < childrenLength; i++) {
       childArray[i] = arguments[i + 2];
@@ -381,11 +395,12 @@ export function createElement(type, config, children) {
         Object.freeze(childArray);
       }
     }
-    console.log('type-children:', childArray); // string || {$$typeof: Symbol(react.element), type: "span", key: null, ref: null, props: {children: "second line in p tag"}}
+    // string || {$$typeof: Symbol(react.element), type: "span", key: null, ref: null, props: {children: "second line in p tag"}}
     props.children = childArray;
   }
 
   // Resolve default props
+  // 处理props默认值
   if (type && type.defaultProps) {
     console.log('defaultProps:', type, type.defaultProps);
     const defaultProps = type.defaultProps;

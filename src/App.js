@@ -1,18 +1,32 @@
 // 为什么一旦使用 JSX 就必须引入 React 呢？
-import React, { useState } from 'react';
-import ClassComp from './ClassComp';
-import Children from './Children';
-import logo from './logo.svg';
+import React, { Component, useState } from 'react';
+// import ClassComp from './ClassComp';
+// import Children from './Children';
+// import logo from './logo.svg';
 import './App.css';
 
 console.log('React Version', React.version);
 
+class App extends Component {
+  state = { count: 0 };
+
+  render() {
+    const { count } = this.state;
+    return (
+      <div className="root" onClick={() => this.setState({ count: count + 1 })}>
+        点击次数：{count}
+      </div>
+    );
+  }
+}
+/**
 function App(props) {
-  const [count, setCount] = useState(0);
+  // const [count, setCount] = useState(0);
   // JSX 代码会被 Babel 编译为 React.createElement，不引入 React 的话就不能使用 React.createElement 了
   return (
     <div className="App">
-      <header className="App-header">
+      <header title="header">
+        hello
         <p>
           {count}
           <span style={{ margin: '0 8px' }} onClick={() => setCount(count - 1)}>
@@ -42,6 +56,7 @@ function App(props) {
     </div>
   );
 }
+*/
 
 // function AppDesuger(props) {
 //   return React.createElement(

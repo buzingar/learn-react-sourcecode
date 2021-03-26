@@ -1295,6 +1295,7 @@ function mountIndeterminateComponent(
   // React DevTools reads this flag.
   workInProgress.effectTag |= PerformedWork;
 
+  // TODOA class component
   if (
     typeof value === 'object' &&
     value !== null &&
@@ -1339,6 +1340,7 @@ function mountIndeterminateComponent(
     workInProgress.memoizedState =
       value.state !== null && value.state !== undefined ? value.state : null;
 
+    // getDerivedStateFromProps 生命周期之一
     const getDerivedStateFromProps = Component.getDerivedStateFromProps;
     if (typeof getDerivedStateFromProps === 'function') {
       applyDerivedStateFromProps(
@@ -2772,6 +2774,7 @@ function remountFiber(
   }
 }
 
+// TODOA 开始工作啦
 function beginWork(
   current: Fiber | null,
   workInProgress: Fiber,

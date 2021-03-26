@@ -52,7 +52,7 @@ import {readContext} from './ReactFiberNewContext';
 import {
   requestCurrentTime,
   computeExpirationForFiber,
-  scheduleWork,
+  scheduleWork, // scheduleUpdateOnFiber
 } from './ReactFiberWorkLoop';
 import {requestCurrentSuspenseConfig} from './ReactFiberSuspenseConfig';
 
@@ -177,11 +177,49 @@ export function applyDerivedStateFromProps(
   if (updateQueue !== null && workInProgress.expirationTime === NoWork) {
     updateQueue.baseState = memoizedState;
   }
+  // workInProgress = {memoizedState:{}, updateQueue:{baseState:{}}}
 }
 
+/* FiberNode
+actualDuration: 8.914999954868108
+actualStartTime: 203.00500001758337
+alternate: null
+child: FiberNode {tag: 5, key: null, elementType: "div", type: "div", stateNode: div.root, …}
+childExpirationTime: 0
+dependencies: null
+effectTag: 1
+elementType: class App
+expirationTime: 0
+firstEffect: null
+index: 0
+key: null
+lastEffect: null
+memoizedProps: {what: "React"}
+memoizedState: {count: 0}
+mode: 8
+nextEffect: null
+pendingProps: {what: "React"}
+ref: null
+return: FiberNode {tag: 3, key: null, elementType: null, type: null, stateNode: FiberRootNode, …}
+selfBaseDuration: 4.844999988563359
+sibling: null
+stateNode: App {props: {…}, context: {…}, refs: {…}, updater: {…}, state: {…}, …}
+tag: 1
+treeBaseDuration: 5.449999938718975
+type: class App
+updateQueue: null
+_debugHookTypes: null
+_debugID: 4
+_debugIsCurrentlyTiming: false
+_debugNeedsRemount: false
+_debugOwner: null
+_debugSource: {fileName: "/Users/bubu/github/learn-react-sourcecode/src/index.js", lineNumber: 7}
+__proto__: Object
+*/
 const classComponentUpdater = {
   isMounted,
   enqueueSetState(inst, payload, callback) {
+    debugger;
     const fiber = getInstance(inst);
     const currentTime = requestCurrentTime();
     const suspenseConfig = requestCurrentSuspenseConfig();
@@ -199,8 +237,9 @@ const classComponentUpdater = {
       }
       update.callback = callback;
     }
-
+    // 入队
     enqueueUpdate(fiber, update);
+    // ReactFiberWorkLoop 的 scheduleUpdateOnFiber(fiber, expirationTime)
     scheduleWork(fiber, expirationTime);
   },
   enqueueReplaceState(inst, payload, callback) {
@@ -532,10 +571,13 @@ function checkClassInstance(workInProgress: Fiber, ctor: any, newProps: any) {
   }
 }
 
+// adopt 采取
 function adoptClassInstance(workInProgress: Fiber, instance: any): void {
   instance.updater = classComponentUpdater;
   workInProgress.stateNode = instance;
+
   // The instance needs access to the fiber so that it can schedule updates
+  // instance._reactInternalFiber = workInProgress;
   setInstance(instance, workInProgress);
   if (__DEV__) {
     instance._reactInternalInstance = fakeInternalInstance;

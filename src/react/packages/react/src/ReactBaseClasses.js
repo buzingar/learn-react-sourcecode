@@ -22,14 +22,19 @@ if (__DEV__) {
  */
 function Component(props, context, updater) {
   // {name: "bubu"} {} undefined
-  console.log('Component:', props, context, updater);
+  console.groupCollapsed();
+  console.log('props:', props);
+  console.log('context:', context);
+  console.log('updater:', updater);
+  console.groupEnd();
+
   this.props = props;
   this.context = context;
   // If a component has string refs, we will assign a different object later.
   this.refs = emptyObject;
   // We initialize the default updater but the real one gets injected by the
   // renderer.
-  this.updater = updater || ReactNoopUpdateQueue;
+  this.updater = updater || ReactNoopUpdateQueue; // classComponentUpdater
 }
 
 Component.prototype.isReactComponent = {};
@@ -59,7 +64,7 @@ Component.prototype.isReactComponent = {};
  * @final
  * @protected
  */
-// setState()是 Component 原型上的方法，其本质是调用 ReactNoopUpdateQueue.js 中的enqueueSetState()方法
+// setState()是 Component 原型上的方法，其本质是调用 updater 的enqueueSetState()方法
 Component.prototype.setState = function(partialState, callback) {
   invariant(
     typeof partialState === 'object' ||
@@ -68,6 +73,8 @@ Component.prototype.setState = function(partialState, callback) {
     'setState(...): takes an object of state variables to update or a ' +
       'function which returns an object of state variables.',
   );
+  debugger;
+  // ReactFiberClassComponent.js 中的 classComponentUpdater 中的 enqueueSetState()
   this.updater.enqueueSetState(this, partialState, callback, 'setState');
 };
 

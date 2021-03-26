@@ -25,7 +25,7 @@ export function remove(key) {
 }
 
 export function get(key) {
-  return key._reactInternalFiber;
+  return key._reactInternalFiber; // ReactFiber.js -> FiberNode
 }
 
 export function has(key) {

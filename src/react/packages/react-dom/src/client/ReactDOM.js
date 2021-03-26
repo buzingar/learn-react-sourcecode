@@ -498,7 +498,7 @@ function getReactRootElementInContainer(container: any) {
 function shouldHydrateDueToLegacyHeuristic(container) {
   // rootElement = container.firstChild / container.documentElement / null
   const rootElement = getReactRootElementInContainer(container);
-  console.log('rootElement:', rootElement);
+  // console.log('rootElement:', rootElement);
   return !!(
     rootElement &&
     rootElement.nodeType === ELEMENT_NODE &&
@@ -591,7 +591,7 @@ function legacyRenderSubtreeIntoContainer(
     topLevelUpdateWarnings(container);
     warnOnInvalidCallback(callback === undefined ? null : callback, 'render');
   }
-  console.log('React-dom >>> container:', container._reactRootContainer);
+  // console.log('React-dom >>> container:', container._reactRootContainer);
   // TODO: Without `any` type, Flow says "Property cannot be accessed on any
   // member of intersection type." Whyyyyyy.
   let root: _ReactSyncRoot = (container._reactRootContainer: any); // undefined

@@ -75,6 +75,7 @@ Component.prototype.setState = function(partialState, callback) {
   );
   debugger;
   // ReactFiberClassComponent.js 中的 classComponentUpdater 中的 enqueueSetState()
+  // this.updater就是ReactUpdateQueue, this是组件的实例
   this.updater.enqueueSetState(this, partialState, callback, 'setState');
 };
 

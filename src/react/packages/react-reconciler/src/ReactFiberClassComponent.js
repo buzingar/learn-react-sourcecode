@@ -90,7 +90,9 @@ if (__DEV__) {
     if (callback === null || typeof callback === 'function') {
       return;
     }
-    const key = `${callerName}_${(callback: any)}`;
+    // vscode 高亮问题，先去掉any
+    // const key = `${callerName}_${(callback: any)}`;
+    const key = `${callerName}_${callback}`;
     if (!didWarnOnInvalidCallback.has(key)) {
       didWarnOnInvalidCallback.add(key);
       warningWithoutStack(
@@ -219,7 +221,6 @@ __proto__: Object
 const classComponentUpdater = {
   isMounted,
   enqueueSetState(inst, payload, callback) {
-    debugger;
     const fiber = getInstance(inst);
     const currentTime = requestCurrentTime();
     const suspenseConfig = requestCurrentSuspenseConfig();

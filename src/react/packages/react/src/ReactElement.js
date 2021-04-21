@@ -386,7 +386,7 @@ export function createElement(type, config, children) {
     props.children = children; // string || React Element
   } else if (childrenLength > 1) {
     // 定长数组
-    const childArray = Array(childrenLength);
+    const childArray = Array(childrenLength); // let arr = Array(3); -> [,,,]
     for (let i = 0; i < childrenLength; i++) {
       childArray[i] = arguments[i + 2];
     }
@@ -401,6 +401,13 @@ export function createElement(type, config, children) {
 
   // Resolve default props
   // 处理props默认值
+  /*
+    MyComponent.defaultProps={
+      name:'default name'
+    };
+    或者
+    static defaultProps = {}
+  */
   if (type && type.defaultProps) {
     console.log('defaultProps:', type, type.defaultProps);
     const defaultProps = type.defaultProps;
@@ -432,8 +439,8 @@ export function createElement(type, config, children) {
     ref,
     self,
     source,
-    ReactCurrentOwner.current,
-    props,
+    ReactCurrentOwner.current, // null | Fiber = {tag, key, elementType, type, stateNode, return, child, sibling, index, ref, pendingProps, memoizedProps, updateQueue, memoizedState, dependencies, mode, effectTag, nextEffect, firstEffect, lastEffect, expirationTime, childExpirationTime, alternate, actualDuration, actualStartTime, selfBaseDuration, treeBaseDuration}
+    props, // 整合props，将config和children存入props中
   );
 }
 
@@ -444,6 +451,10 @@ export function createElement(type, config, children) {
  * See https://reactjs.org/docs/react-api.html#createfactory
  */
 export function createFactory(type) {
+  // bind的关键思路
+  // 1. 因为bind方法不会立即执行函数，需要返回一个待执行的函数（这里用到闭包，可以返回一个函数）return function(){}
+  // 2. 作用域绑定，这里可以使用apply或者call方法来实现 xx.call(yy)/xx.apply(yy)
+  // 3. 参数传递，由于参数的不确定性，需要用apply传递数组（实例更明了）xx.apply(yy,[...Array...])，如果用call就不太方便了，因为call后面的参数需要一个个列出来
   // 也是一个ReactElement
   const factory = createElement.bind(null, type);
   // Expose the type on the factory and the prototype so that it can be

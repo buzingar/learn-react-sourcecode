@@ -5,13 +5,13 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-import ReactVersion from 'shared/ReactVersion';
+import ReactVersion from 'shared/ReactVersion'; // 16.8.6
 import {
-  REACT_FRAGMENT_TYPE,
-  REACT_PROFILER_TYPE,
-  REACT_STRICT_MODE_TYPE,
-  REACT_SUSPENSE_TYPE,
-  REACT_SUSPENSE_LIST_TYPE,
+  REACT_FRAGMENT_TYPE, // Symbol.for('react.fragment') | 0xeacb
+  REACT_PROFILER_TYPE, // Symbol.for('react.profiler') | 0xead2
+  REACT_STRICT_MODE_TYPE, // Symbol.for('react.strict_mode') | 0xeacc
+  REACT_SUSPENSE_TYPE, // Symbol.for('react.suspense') | 0xead1
+  REACT_SUSPENSE_LIST_TYPE, // Symbol.for('react.suspense_list') | 0xead8
 } from 'shared/ReactSymbols';
 
 import {Component, PureComponent} from './ReactBaseClasses';

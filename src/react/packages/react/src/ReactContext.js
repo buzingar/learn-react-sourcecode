@@ -32,6 +32,7 @@ export function createContext<T>(
     }
   }
 
+  // 一个字面量 context 对象
   const context: ReactContext<T> = {
     $$typeof: REACT_CONTEXT_TYPE,
     _calculateChangedBits: calculateChangedBits,
